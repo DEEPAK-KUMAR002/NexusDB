@@ -131,9 +131,9 @@ public class GeminiClient {
     public float[] embed(String text) {
         if (!isAvailable()) return new float[0];
         try {
-            String body = "{\"model\": \"models/text-embedding-004\", \"content\": {\"parts\": [{\"text\": \"" + esc(text) + "\"}]}}";
+            String body = "{\"model\": \"models/gemini-embedding-001\", \"content\": {\"parts\": [{\"text\": \"" + esc(text) + "\"}]}}";
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" + apiKey))
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=" + apiKey))
                     .timeout(Duration.ofSeconds(30))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
@@ -158,7 +158,7 @@ public class GeminiClient {
         try {
             String body = "{\"contents\": [{\"parts\":[{\"text\": \"" + esc(prompt) + "\"}]}]}";
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey))
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + apiKey))
                     .timeout(Duration.ofSeconds(180))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))

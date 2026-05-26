@@ -425,7 +425,7 @@ public class Main {
                 
                 StringBuilder sb = new StringBuilder();
                 sb.append("{\"answer\":").append(jS(answer))
-                  .append(",\"model\":").append(jS("gemini-1.5-flash"))
+                  .append(",\"model\":").append(jS("gemini-flash-latest"))
                   .append(",\"contexts\":[");
                 for (int i = 0; i < hits.size(); i++) {
                     if (i > 0) sb.append(",");
@@ -443,8 +443,8 @@ public class Main {
             if ("/status".equals(path)) {
                 boolean up = ai.isAvailable();
                 String res = "{\"ollamaAvailable\":" + (up ? "true" : "false")
-                           + ",\"embedModel\":" + jS("text-embedding-004")
-                           + ",\"genModel\":" + jS("gemini-1.5-flash")
+                           + ",\"embedModel\":" + jS("gemini-embedding-001")
+                           + ",\"genModel\":" + jS("gemini-flash-latest")
                            + ",\"docCount\":" + docDB.size()
                            + ",\"docDims\":" + docDB.getDims()
                            + ",\"demoDims\":" + DIMS
