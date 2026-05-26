@@ -159,7 +159,13 @@ public class Main {
         System.out.println(db.size() + " demo vectors | " + DIMS + " dims | HNSW+KD-Tree+BruteForce");
         System.out.println("Gemini API: " + (aiUp ? "ONLINE" : "OFFLINE (Missing GEMINI_API_KEY environment variable)"));
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        int port = 8080;
+        String envPort = System.getenv("PORT");
+        if (envPort != null && !envPort.isEmpty()) {
+            port = Integer.parseInt(envPort);
+        }
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
         server.createContext("/", exchange -> {
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
