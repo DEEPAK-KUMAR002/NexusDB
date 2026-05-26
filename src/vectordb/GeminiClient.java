@@ -8,23 +8,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OllamaClient {
-    private String host;
-    private int port;
+public class GeminiClient {
+    private String apiKey;
     private HttpClient client;
 
-    public String embedModel = "nomic-embed-text";
-    public String genModel = "llama3.2";
-
-    public OllamaClient() {
-        this("127.0.0.1", 11434);
-    }
-
-    public OllamaClient(String host, int port) {
-        this.host = host;
-        this.port = port;
+    public GeminiClient() {
+        this.apiKey = System.getenv("GEMINI_API_KEY");
         this.client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(3))
+                .connectTimeout(Duration.ofSeconds(5))
                 .build();
     }
 
@@ -42,7 +33,7 @@ public class OllamaClient {
     }
 
     private List<Float> parseEmbedding(String body) {
-        int p = body.indexOf("\"embedding\"");
+        int p = body.indexOf("\"values\"");
         if (p == -1) return new ArrayList<>();
         p = body.indexOf('[', p);
         if (p == -1) return new ArrayList<>();
@@ -63,10 +54,6 @@ public class OllamaClient {
         return res;
     }
 
-    private String parseResponse(String body) {
-        return extractStr(body, "response");
-    }
-
     public static String extractStr(String body, String key) {
         int p = body.indexOf("\"" + key + "\"");
         if (p == -1) return "";
@@ -76,7 +63,49 @@ public class OllamaClient {
         p++;
         StringBuilder res = new StringBuilder();
         while (p < body.length()) {
-            if (body.charAt(p) == '"') break;
+            if (body.charAt(p) == '"') {
+                int count = 0;
+                int tmp = p - 1;
+                while (tmp >= 0 && body.charAt(tmp) == '\\') { count++; tmp--; }
+                if (count % 2 == 0) break;
+            }
+            if (body.charAt(p) == '\\' && p + 1 < body.length()) {
+                p++;
+                switch (body.charAt(p)) {
+                    case '"': res.append('"'); break;
+                    case '\\': res.append('\\'); break;
+                    case 'n': res.append('\n'); break;
+                    case 'r': res.append('\r'); break;
+                    case 't': res.append('\t'); break;
+                    default: res.append(body.charAt(p)); break;
+                }
+            } else {
+                res.append(body.charAt(p));
+            }
+            p++;
+        }
+        return res.toString();
+    }
+
+    private String parseResponse(String body) {
+        int p = body.indexOf("\"text\"");
+        if (p == -1) return "ERROR: Failed to parse Gemini response.";
+        p = body.indexOf(':', p) + 1;
+        while (p < body.length() && (body.charAt(p) == ' ' || body.charAt(p) == '\t')) p++;
+        if (p >= body.length() || body.charAt(p) != '"') return "";
+        p++;
+        StringBuilder res = new StringBuilder();
+        while (p < body.length()) {
+            if (body.charAt(p) == '"') {
+                // handle escaped quotes
+                int count = 0;
+                int tmp = p - 1;
+                while (tmp >= 0 && body.charAt(tmp) == '\\') {
+                    count++;
+                    tmp--;
+                }
+                if (count % 2 == 0) break; // unescaped quote ends the string
+            }
             if (body.charAt(p) == '\\' && p + 1 < body.length()) {
                 p++;
                 switch (body.charAt(p)) {
@@ -96,55 +125,52 @@ public class OllamaClient {
     }
 
     public boolean isAvailable() {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://" + host + ":" + port + "/api/tags"))
-                    .timeout(Duration.ofSeconds(2))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            return response.statusCode() == 200;
-        } catch (Exception e) {
-            return false;
-        }
+        return this.apiKey != null && !this.apiKey.trim().isEmpty();
     }
 
     public float[] embed(String text) {
+        if (!isAvailable()) return new float[0];
         try {
-            String body = "{\"model\":\"" + embedModel + "\",\"prompt\":\"" + esc(text) + "\"}";
+            String body = "{\"model\": \"models/text-embedding-004\", \"content\": {\"parts\": [{\"text\": \"" + esc(text) + "\"}]}}";
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://" + host + ":" + port + "/api/embeddings"))
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" + apiKey))
                     .timeout(Duration.ofSeconds(30))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) return new float[0];
+            if (response.statusCode() != 200) {
+                System.out.println("Gemini Embed Error: " + response.body());
+                return new float[0];
+            }
             List<Float> list = parseEmbedding(response.body());
             float[] arr = new float[list.size()];
             for (int i = 0; i < list.size(); i++) arr[i] = list.get(i);
             return arr;
         } catch (Exception e) {
+            e.printStackTrace();
             return new float[0];
         }
     }
 
     public String generate(String prompt) {
+        if (!isAvailable()) return "ERROR: GEMINI_API_KEY environment variable is not set.";
         try {
-            String body = "{\"model\":\"" + genModel + "\","
-                    + "\"prompt\":\"" + esc(prompt) + "\","
-                    + "\"stream\":false}";
+            String body = "{\"contents\": [{\"parts\":[{\"text\": \"" + esc(prompt) + "\"}]}]}";
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://" + host + ":" + port + "/api/generate"))
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey))
                     .timeout(Duration.ofSeconds(180))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) return "ERROR: Ollama unavailable. Run: ollama serve";
+            if (response.statusCode() != 200) {
+                return "ERROR: Gemini API returned status " + response.statusCode() + " - " + response.body();
+            }
             return parseResponse(response.body());
         } catch (Exception e) {
-            return "ERROR: Ollama unavailable. Run: ollama serve";
+            e.printStackTrace();
+            return "ERROR: Exception while calling Gemini API: " + e.getMessage();
         }
     }
 }

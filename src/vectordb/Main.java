@@ -106,7 +106,7 @@ public class Main {
     
     private static int extractInt(String body, String key, int def) {
         try {
-            String val = OllamaClient.extractStr(body, key);
+            String val = GeminiClient.extractStr(body, key);
             if (val.isEmpty()) {
                 // maybe it's not a string in json but a number
                 int p = body.indexOf("\"" + key + "\"");
@@ -149,18 +149,15 @@ public class Main {
     public static void main(String[] args) throws Exception {
         VectorDB db = new VectorDB(DIMS);
         DocumentDB docDB = new DocumentDB();
-        OllamaClient ollama = new OllamaClient();
+        GeminiClient ai = new GeminiClient();
 
         loadDemo(db);
 
-        boolean ollamaUp = ollama.isAvailable();
+        boolean aiUp = ai.isAvailable();
         System.out.println("=== VectorDB Engine (Java) ===");
         System.out.println("http://localhost:8080");
         System.out.println(db.size() + " demo vectors | " + DIMS + " dims | HNSW+KD-Tree+BruteForce");
-        System.out.println("Ollama: " + (ollamaUp ? "ONLINE" : "OFFLINE (install from ollama.com)"));
-        if (ollamaUp) {
-            System.out.println("  embed model: " + ollama.embedModel + "  gen model: " + ollama.genModel);
-        }
+        System.out.println("Gemini API: " + (aiUp ? "ONLINE" : "OFFLINE (Missing GEMINI_API_KEY environment variable)"));
 
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
@@ -222,8 +219,8 @@ public class Main {
             
             if ("/insert".equals(path) && "POST".equals(exchange.getRequestMethod())) {
                 String body = readBody(exchange);
-                String meta = OllamaClient.extractStr(body, "metadata");
-                String cat = OllamaClient.extractStr(body, "category");
+                String meta = GeminiClient.extractStr(body, "metadata");
+                String cat = GeminiClient.extractStr(body, "category");
                 
                 // extract embedding array
                 float[] emb = new float[0];
@@ -331,8 +328,8 @@ public class Main {
             
             if ("/doc/insert".equals(path) && "POST".equals(exchange.getRequestMethod())) {
                 String body = readBody(exchange);
-                String title = OllamaClient.extractStr(body, "title");
-                String text = OllamaClient.extractStr(body, "text");
+                String title = GeminiClient.extractStr(body, "title");
+                String text = GeminiClient.extractStr(body, "text");
                 if (title.isEmpty() || text.isEmpty()) {
                     sendResponse(exchange, 400, "{\"error\":\"need title and text\"}");
                     return;
@@ -340,9 +337,9 @@ public class Main {
                 List<String> chunks = chunkText(text, 250, 30);
                 List<Integer> ids = new ArrayList<>();
                 for (int i = 0; i < chunks.size(); i++) {
-                    float[] emb = ollama.embed(chunks.get(i));
+                    float[] emb = ai.embed(chunks.get(i));
                     if (emb.length == 0) {
-                        sendResponse(exchange, 500, "{\"error\":\"Ollama unavailable. Install from https://ollama.com\"}");
+                        sendResponse(exchange, 500, "{\"error\":\"Gemini API unavailable. Missing GEMINI_API_KEY.\"}");
                         return;
                     }
                     String chunkTitle = chunks.size() > 1 ? title + " [" + (i+1) + "/" + chunks.size() + "]" : title;
@@ -389,16 +386,16 @@ public class Main {
             
             if ("/doc/ask".equals(path) && "POST".equals(exchange.getRequestMethod())) {
                 String body = readBody(exchange);
-                String question = OllamaClient.extractStr(body, "question");
+                String question = GeminiClient.extractStr(body, "question");
                 int k = extractInt(body, "k", 3);
                 if (question.isEmpty()) {
                     sendResponse(exchange, 400, "{\"error\":\"need question\"}");
                     return;
                 }
                 
-                float[] qEmb = ollama.embed(question);
+                float[] qEmb = ai.embed(question);
                 if (qEmb.length == 0) {
-                    sendResponse(exchange, 500, "{\"error\":\"Ollama unavailable\"}");
+                    sendResponse(exchange, 500, "{\"error\":\"Gemini API unavailable\"}");
                     return;
                 }
                 
@@ -418,11 +415,11 @@ public class Main {
                               + "Context:\n" + ctx.toString()
                               + "Question: " + question + "\n\nAnswer:";
                               
-                String answer = ollama.generate(prompt);
+                String answer = ai.generate(prompt);
                 
                 StringBuilder sb = new StringBuilder();
                 sb.append("{\"answer\":").append(jS(answer))
-                  .append(",\"model\":").append(jS(ollama.genModel))
+                  .append(",\"model\":").append(jS("gemini-1.5-flash"))
                   .append(",\"contexts\":[");
                 for (int i = 0; i < hits.size(); i++) {
                     if (i > 0) sb.append(",");
@@ -438,10 +435,10 @@ public class Main {
             }
             
             if ("/status".equals(path)) {
-                boolean up = ollama.isAvailable();
+                boolean up = ai.isAvailable();
                 String res = "{\"ollamaAvailable\":" + (up ? "true" : "false")
-                           + ",\"embedModel\":" + jS(ollama.embedModel)
-                           + ",\"genModel\":" + jS(ollama.genModel)
+                           + ",\"embedModel\":" + jS("text-embedding-004")
+                           + ",\"genModel\":" + jS("gemini-1.5-flash")
                            + ",\"docCount\":" + docDB.size()
                            + ",\"docDims\":" + docDB.getDims()
                            + ",\"demoDims\":" + DIMS

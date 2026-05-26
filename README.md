@@ -1,9 +1,9 @@
-# VectorDB — Build a Vector Database from Scratch in Java
+# NexusDB — Build a Vector Database from Scratch in Java
 
-A fully working **Vector Database** built from scratch in Java with a web UI.  
-Implements **HNSW**, **KD-Tree**, and **Brute Force** search algorithms side-by-side, plus a **RAG pipeline** powered by a local LLM via Ollama.
+A fully working **Vector Database** built from scratch in Java with a beautiful glassmorphic web UI.  
+Implements **HNSW**, **KD-Tree**, and **Brute Force** search algorithms side-by-side, plus a **RAG pipeline** powered by the **Google Gemini API**.
 
-> Built as an educational project to show how production vector databases like Pinecone, Weaviate, and Chroma actually work under the hood.
+> Built as an educational project to show how production vector databases like Pinecone, Weaviate, and Chroma actually work under the hood, perfectly integrated with real-world cloud AI.
 
 ---
 
@@ -15,8 +15,8 @@ Implements **HNSW**, **KD-Tree**, and **Brute Force** search algorithms side-by-
 | **3 Distance Metrics** | Cosine similarity, Euclidean distance, Manhattan distance |
 | **16D Demo Vectors** | 20 pre-loaded semantic vectors across 4 categories (CS, Math, Food, Sports) |
 | **2D PCA Scatter Plot** | Live visualization of semantic space — watch clusters form |
-| **Real Document Embedding** | Paste any text → Ollama embeds it with `nomic-embed-text` (768D) |
-| **RAG Pipeline** | Ask questions about your documents → HNSW retrieves context → local LLM answers |
+| **Real Document Embedding** | Paste any text → The Gemini API embeds it with `text-embedding-004` (768D) |
+| **RAG Pipeline** | Ask questions about your documents → HNSW retrieves context → Gemini answers |
 | **Full REST API** | CRUD endpoints: insert, delete, search, benchmark, hnsw-info |
 
 ---
@@ -27,7 +27,7 @@ Implements **HNSW**, **KD-Tree**, and **Brute Force** search algorithms side-by-
 Your Text
     │
     ▼
-Ollama (nomic-embed-text)          ← converts text to a 768-dimensional vector
+Gemini API (text-embedding-004)    ← converts text to a 768-dimensional vector
     │
     ▼
 HNSW Index (Java)                  ← indexes the vector in a multilayer graph
@@ -36,7 +36,7 @@ HNSW Index (Java)                  ← indexes the vector in a multilayer graph
 Semantic Search                    ← finds nearest neighbors in vector space
     │
     ▼
-Ollama (llama3.2)                  ← reads retrieved chunks, generates an answer
+Gemini API (gemini-1.5-flash)      ← reads retrieved chunks, generates an answer
     │
     ▼
 Answer
@@ -48,100 +48,53 @@ Answer
 
 ## Prerequisites
 
-You need **3 things** installed on your laptop:
+You need **3 things** to run this project:
 
 1. **Java JDK 11+** (gives you `javac` compiler and `java` runner)
 2. **Git**
-3. **Ollama** (runs the local AI models)
+3. **Gemini API Key** (Free from Google AI Studio)
 
 ---
 
-## Step-by-Step Setup (Windows)
+## Step-by-Step Setup
 
-### Step 1 — Install Java
+### Step 1 — Get a Free Gemini API Key
 
-1. Download and install a Java JDK (version 11 or higher) from Oracle or Adoptium.
-2. Ensure `java` and `javac` are added to your Windows PATH:
-   - **Open a new PowerShell** and verify:
-   ```
-   javac -version
-   java -version
-   ```
+1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. Sign in with your Google account and click **Create API Key**.
+3. Copy the key.
 
----
+### Step 2 — Install Java & Git
 
-### Step 2 — Install Git
+- Download and install a Java JDK (version 11 or higher) from Oracle or Adoptium.
+- Download Git from https://git-scm.com/download/win
 
-1. Go to **https://git-scm.com/download/win** and download Git for Windows
-2. Run the installer with default settings
-3. Verify in PowerShell:
-```
-git --version
-```
-
----
-
-### Step 3 — Install Ollama (Local AI Models)
-
-1. Go to **https://ollama.com** and click **Download for Windows**
-2. Run the installer
-3. Ollama starts automatically in the system tray
-4. Open **PowerShell** and pull the two required models:
-
-```powershell
-ollama pull nomic-embed-text
-```
-*(~274 MB — this is the embedding model)*
-
-```powershell
-ollama pull llama3.2
-```
-*(~2 GB — this is the language model)*
-
-5. Verify Ollama is running:
-```powershell
-ollama list
-```
-You should see both models listed.
-
-> **Minimum specs for Ollama:** 8GB RAM recommended. The models will use ~3GB total.
-
----
-
-### Step 4 — Clone the Repository
+### Step 3 — Clone the Repository
 
 Open **PowerShell** and run:
 
 ```powershell
-git clone https://github.com/YOUR_USERNAME/VectorDB.git
-cd VectorDB
+git clone https://github.com/DEEPAK-KUMAR002/NexusDB.git
+cd NexusDB
 ```
 
-*(Replace `YOUR_USERNAME` with the actual GitHub username)*
+### Step 4 — Compile the Java Server
 
----
-
-### Step 5 — Compile the Java Server
-
-Inside the `VectorDB` folder, run:
+Inside the `NexusDB` folder, run:
 
 ```powershell
 javac src/vectordb/*.java
 ```
 
-This produces `.class` files inside the `src/vectordb` directory.
+### Step 5 — Run Everything
 
----
+Before starting the server, set your Gemini API key as an environment variable:
 
-### Step 6 — Run Everything
-
-**Terminal 1** — Start Ollama (if not already running):
 ```powershell
-ollama serve
+$env:GEMINI_API_KEY="your_api_key_here"
 ```
-*(If Ollama is already in the system tray, skip this)*
 
-**Terminal 2** — Start the VectorDB server:
+Start the VectorDB server:
 ```powershell
 java -cp src vectordb.Main
 ```
@@ -151,8 +104,7 @@ You should see:
 === VectorDB Engine (Java) ===
 http://localhost:8080
 20 demo vectors | 16 dims | HNSW+KD-Tree+BruteForce
-Ollama: ONLINE
-  embed model: nomic-embed-text  gen model: llama3.2
+Gemini API: ONLINE
 ```
 
 **Open your browser** and go to:
@@ -176,7 +128,7 @@ http://localhost:8080
 
 ### Tab 2: Documents (Real Embeddings)
 
-This uses Ollama to generate **real 768-dimensional embeddings** from any text.
+This uses the Gemini API to generate **real 768-dimensional embeddings** from any text.
 
 1. Type a title (e.g., `Operating Systems Notes`)
 2. Paste any text — lecture notes, textbook paragraphs, Wikipedia articles
@@ -192,62 +144,20 @@ This uses Ollama to generate **real 768-dimensional embeddings** from any text.
 
 What happens behind the scenes:
 ```
-1. Your question → embedded with nomic-embed-text (768D vector)
+1. Your question → embedded with text-embedding-004 (768D vector)
 2. HNSW search → finds 3 most semantically similar chunks
-3. Retrieved chunks → sent as context to llama3.2
-4. llama3.2 → generates an answer based only on your documents
+3. Retrieved chunks → sent as context to gemini-1.5-flash
+4. gemini-1.5-flash → generates an answer based only on your documents
 ```
 
 The answer streams in with a typewriter effect. Click the **context chips** to see exactly which chunks the AI used.
 
 ---
 
-## REST API Reference
-
-The server exposes a full REST API at `http://localhost:8080`.
-
-### Demo Vector Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/search?v=f1,f2,...&k=5&metric=cosine&algo=hnsw` | K-NN search |
-| `POST` | `/insert` | Insert a demo vector |
-| `DELETE` | `/delete/:id` | Delete by ID |
-| `GET` | `/items` | List all demo vectors |
-| `GET` | `/benchmark?v=...&k=5&metric=cosine` | Compare all 3 algorithms |
-| `GET` | `/hnsw-info` | HNSW graph structure and layer stats |
-| `GET` | `/stats` | Database statistics |
-
-### Document & RAG Endpoints
-
-| Method | Endpoint | Body | Description |
-|---|---|---|---|
-| `POST` | `/doc/insert` | `{"title":"...","text":"..."}` | Embed and store document |
-| `GET` | `/doc/list` | — | List all stored documents |
-| `DELETE` | `/doc/delete/:id` | — | Delete document chunk |
-| `POST` | `/doc/ask` | `{"question":"...","k":3}` | RAG: retrieve + generate |
-| `GET` | `/status` | — | Ollama status and model info |
-
-### Example: Search via curl
-
-```powershell
-curl "http://localhost:8080/search?v=0.9,0.8,0.7,0.6,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1&k=3&metric=cosine&algo=hnsw"
-```
-
-### Example: Ask a question via curl
-
-```powershell
-curl -X POST http://localhost:8080/doc/ask `
-  -H "Content-Type: application/json" `
-  -d '{"question":"What is dynamic programming?","k":3}'
-```
-
----
-
 ## Project Structure
 
 ```
-VectorDB/
+NexusDB/
 ├── src/
 │   └── vectordb/   ← Java backend (HNSW, KD-Tree, BruteForce, REST API, RAG)
 ├── index.html      ← Frontend (PCA scatter plot, chat UI, benchmark)
@@ -262,59 +172,9 @@ KDTree              O(log N)    Exact, axis-aligned partitioning
 HNSW                O(log N)    Approximate, multilayer small-world graph
 
 VectorDB            Unified interface over all 3 (16D demo vectors)
-DocumentDB          HNSW-only index for real Ollama embeddings (768D)
-OllamaClient        HTTP client → /api/embeddings + /api/generate
+DocumentDB          HNSW-only index for real embeddings (768D)
+GeminiClient        HTTP client → Google Generative Language API
 ```
-
----
-
-## Algorithm Deep Dive
-
-### HNSW (Hierarchical Navigable Small World)
-
-Nodes are inserted into a multilayer graph. Each node randomly gets assigned a maximum layer. Layer 0 has all nodes with many connections; higher layers have fewer nodes (exponentially fewer) with longer-range connections.
-
-**Insert:** Start at the top layer, greedily find the nearest node, drop a layer, repeat. At each layer from your assigned max down to 0, run a beam search (ef_construction=200) and connect to the M nearest neighbors bidirectionally.
-
-**Search:** Same greedy descent from top layer. At layer 0, expand to ef nearest candidates using a priority queue.
-
-**Why it's fast:** The upper layers act like a highway — you quickly get to the right neighborhood, then zoom in at layer 0.
-
-### KD-Tree (K-Dimensional Tree)
-
-Binary space partitioning. Each node splits space along one dimension (cycling through all dimensions). Search prunes entire subtrees when the closest possible point in that subtree can't beat the current best — the "ball within hyperslab" check.
-
-**Weakness:** Degrades with high dimensions (curse of dimensionality). Works well for ≤20D, becomes close to brute force at 768D.
-
-### Why HNSW Wins at High Dimensions
-
-KD-Tree pruning relies on axis-aligned distance bounds. In high dimensions, almost all the space is near the boundary of the hypersphere — no subtrees get pruned. HNSW's graph-based approach doesn't have this problem.
-
----
-
-## Common Issues
-
-| Problem | Fix |
-|---|---|
-| `Ollama: OFFLINE` in header | Run `ollama serve` in a terminal |
-| Embedding takes forever | Ollama is downloading the model on first use, wait 2 min |
-| `javac: command not found` | Add your Java bin directory to Windows PATH |
-| Port 8080 already in use | Kill the process: `netstat -ano \| findstr 8080` then `taskkill /PID <pid> /F` |
-| LLM answer is slow | Normal — llama3.2 takes 10–30s on a laptop CPU. Use llama3.2:1b for faster answers |
-
-### Use a Smaller/Faster LLM
-
-If llama3.2 is too slow on your laptop, switch to the 1B model:
-
-```powershell
-ollama pull llama3.2:1b
-```
-
-Then edit [OllamaClient.java](src/vectordb/OllamaClient.java) line where `genModel` is set:
-```java
-public String genModel = "llama3.2:1b";   // change this
-```
-Recompile and restart.
 
 ---
 

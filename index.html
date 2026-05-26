@@ -197,7 +197,7 @@ button {
   <span class="badge hl">HNSW</span>
   <span class="badge">KD-TREE</span>
   <span class="badge">BRUTE FORCE</span>
-  <span class="badge" id="ollamaBadge">OLLAMA…</span>
+  <span class="badge" id="geminiBadge">GEMINI API…</span>
   <span id="statsLabel">loading…</span>
 </header>
 
@@ -305,14 +305,14 @@ button {
     <!-- TAB: DOCUMENTS -->
     <div class="tab-content" id="tab-docs">
       <div>
-        <div class="sec">Ollama Status</div>
-        <div class="ollama-status" id="ollamaStatus">Checking…</div>
+        <div class="sec">Gemini API Status</div>
+        <div class="ollama-status" id="geminiStatus">Checking…</div>
       </div>
       <div>
         <div class="sec">Insert Document</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <input type="text" id="docTitle" placeholder="Document title / topic…" />
-          <textarea id="docText" placeholder="Paste your notes, textbook excerpt, lecture content…&#10;&#10;Long text is automatically split into overlapping chunks and each chunk gets its own real embedding via Ollama's nomic-embed-text model."></textarea>
+          <textarea id="docText" placeholder="Paste your notes, textbook excerpt, lecture content…&#10;&#10;Long text is automatically split into overlapping chunks and each chunk gets its own real embedding via Gemini's text-embedding-004 model."></textarea>
           <button class="btn-g" id="insertDocBtn" onclick="insertDocument()">⚡ EMBED &amp; INSERT</button>
           <div id="insertStatus" style="font-size:11px;color:var(--muted)"></div>
         </div>
@@ -637,6 +637,27 @@ async function runBenchmark() {
   } catch(_) {}
 }
 
+async function checkGeminiStatus() {
+    const badge=document.getElementById('geminiBadge');
+    const box=document.getElementById('geminiStatus');
+    if (!badge || !box) return;
+    try {
+      const r=await fetch('/status');
+      const d=await r.json();
+      if (d.ollamaAvailable) {
+        badge.className='badge ok'; badge.textContent='GEMINI ✓';
+        box.className='ollama-status ok';
+        box.innerHTML=`<div style="color:var(--green);font-weight:700;margin-bottom:4px">GEMINI API CONNECTED</div>
+        <div style="color:var(--muted)">Embed: ${d.embedModel}<br>Generate: ${d.genModel}</div>`;
+      } else {
+        badge.className='badge err'; badge.textContent='GEMINI ✗';
+        box.className='ollama-status err';
+        box.innerHTML=`<div style="color:var(--red);font-weight:700;margin-bottom:4px">GEMINI API MISSING</div>
+        <span style="color:var(--muted)">Set the GEMINI_API_KEY environment variable.</span>`;
+      }
+    } catch(e) {}
+  }
+
 async function loadHNSW() {
   try {
     const r=await fetch(API+'/hnsw-info'), d=await r.json();
@@ -670,30 +691,7 @@ async function deleteItem(id) {
 // ════════════════════════════════════════════════════════════
 //  DOCUMENT MANAGEMENT
 // ════════════════════════════════════════════════════════════
-async function checkOllamaStatus() {
-  try {
-    const r=await fetch(API+'/status'), d=await r.json();
-    const badge=document.getElementById('ollamaBadge');
-    const box=document.getElementById('ollamaStatus');
-    if (d.ollamaAvailable) {
-      badge.className='badge ok'; badge.textContent='OLLAMA ✓';
-      box.className='ollama-status ok';
-      box.innerHTML=`<span style="color:var(--green)">● Online</span><br>`+
-        `Embed: <span style="color:var(--accent)">${d.embedModel}</span><br>`+
-        `Generate: <span style="color:var(--accent)">${d.genModel}</span><br>`+
-        `Dims: <span style="color:var(--muted)">${d.docDims||'(first insert sets this)'}</span><br>`+
-        `Documents: <span style="color:var(--text)">${d.docCount}</span>`;
-    } else {
-      badge.className='badge err'; badge.textContent='OLLAMA ✗';
-      box.className='ollama-status err';
-      box.innerHTML=`<span style="color:var(--red)">● Offline</span><br><br>`+
-        `To enable RAG features:<br>`+
-        `<span style="color:var(--muted)">1. Install from ollama.com<br>`+
-        `2. ollama pull nomic-embed-text<br>`+
-        `3. ollama pull llama3.2</span>`;
-    }
-  } catch(_) {}
-}
+
 
 async function insertDocument() {
   const title=document.getElementById('docTitle').value.trim();
@@ -703,7 +701,7 @@ async function insertDocument() {
   if(!title||!text){status.textContent='⚠ Need both a title and text.';return;}
 
   btn.disabled=true; btn.textContent='Embedding…';
-  status.innerHTML='<span style="color:var(--muted)">Calling Ollama nomic-embed-text…</span>';
+  status.innerHTML='<span style="color:var(--muted)">Calling Gemini text-embedding-004…</span>';
 
   try {
     const r=await fetch(API+'/doc/insert',{
@@ -725,7 +723,7 @@ async function insertDocument() {
             body:JSON.stringify({metadata: title, category: 'doc', embedding: emb16})
           }).then(() => { loadItems().then(loadHNSW); });
 
-      loadDocList(); checkOllamaStatus();
+      loadDocList(); checkGeminiStatus();
     }
   } catch(_) {
     status.innerHTML='<span style="color:var(--red)">✗ Server error</span>';
@@ -756,7 +754,7 @@ async function loadDocList() {
 async function deleteDoc(id) {
   try {
     await fetch(`${API}/doc/delete/${id}`,{method:'DELETE'});
-    loadDocList(); checkOllamaStatus();
+    loadDocList(); checkGeminiStatus();
   } catch(_) {}
 }
 
@@ -885,7 +883,7 @@ function toggleCtx(i) {
 // ════════════════════════════════════════════════════════════
 resize(); drawFrame();
 loadItems().then(loadHNSW);
-checkOllamaStatus();
+checkGeminiStatus();
 </script>
 </body>
 </html>
