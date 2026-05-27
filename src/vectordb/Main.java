@@ -151,7 +151,13 @@ public class Main {
         DocumentDB docDB = new DocumentDB();
         GeminiClient ai = new GeminiClient();
 
-        loadDemo(db);
+        db.loadFromFile();
+        docDB.loadFromFile();
+
+        if (db.size() == 0) {
+            loadDemo(db);
+            db.saveToFile();
+        }
 
         boolean aiUp = ai.isAvailable();
         System.out.println("=== VectorDB Engine (Java) ===");
